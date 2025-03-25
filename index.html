@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מעקב תינוק</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            direction: rtl;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 400px;
+            margin: auto;
+            padding: 20px;
+            background: white;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
+        .dashboard {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .buttons button {
+            flex: 1;
+            margin: 5px;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+        }
+
+        .feed-button {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .diaper-button {
+            background: #FF9800;
+            color: white;
+        }
+
+        .history {
+            margin-top: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #2196F3;
+            color: white;
+        }
+
+        .alert {
+            color: red;
+            font-weight: bold;
+            display: none;
+        }
+
+        .clear-button {
+            background: #d9534f;
+            color: white;
+            padding: 10px;
+            margin-top: 10px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>מעקב תינוק <i class="fas fa-baby"></i></h1>
+
+        <div class="dashboard">
+            <h2>האכלה אחרונה: <span id="last-feed">אין נתונים</span></h2>
+            <h2>זמן שעבר: <span id="elapsed-time">--</span></h2>
+            <p class="alert" id="alert">עבר זמן רב מאז ההאכלה האחרונה!</p>
+        </div>
+        
+        <h2>הוספת נתוני האכלה</h2>
+        <div class="buttons">
+            <button class="feed-button" onclick="addFeeding('הנקה')"><i class="fas fa-tint"></i> הנקה</button>
+            <button class="feed-button" onclick="addFeeding('פורמולה')"><i class="fas fa-bottle"></i> פורמולה</button>
+        </div>
+
+        <h2>החלפת חיתול</h2>
+        <div class="buttons">
+            <button class="diaper-button" onclick="addDiaperChange('פיפי')"><i class="fas fa-tint"></i> פיפי</button>
+            <button class="diaper-button" onclick="addDiaperChange('קקי')"><i class="fas fa-poo"></i> קקי</button>
+            <button class="diaper-button" onclick="addDiaperChange('גם וגם')"><i class="fas fa-poo-storm"></i> גם וגם</button>
+        </div>
+
+        <div class="history">
+            <h2>היסטוריה</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>סוג</th>
+                        <th>זמן</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table"></tbody>
+            </table>
+            <button class="clear-button" onclick="clearHistory()">נקה היסטוריה</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            loadLastFeeding();
+            loadHistory();
+            setInterval(updateElapsedTime, 1000);
+        });
+
+        function addFeeding(type) {
+            const time = new Date().toISOString();
+            const feedingData = { type, time };
+            localStorage.setItem("lastFeeding", JSON.stringify(feedingData));
+
+            saveToHistory(type, time);
+            loadLastFeeding();
+        }
+
+        function addDiaperChange(type) {
+            const time = new Date().toISOString();
+            saveToHistory("החלפת חיתול - " + type, time);
+        }
+
+        function saveToHistory(type, time) {
+            let history = JSON.parse(localStorage.getItem("history")) || [];
+            history.unshift({ type, time });
+            localStorage.setItem("history", JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadLastFeeding() {
+            const lastFeeding = JSON.parse(localStorage.getItem("lastFeeding"));
+            
+            if (lastFeeding) {
+                document.getElementById("last-feed").innerText = lastFeeding.type;
+                updateElapsedTime();
+            }
+        }
+
+        function updateElapsedTime() {
+            const lastFeeding = JSON.parse(localStorage.getItem("lastFeeding"));
+            
+            if (lastFeeding) {
+                const lastTime = new Date(lastFeeding.time);
+                const now = new Date();
+                const diffMs = now - lastTime;
+                
+                const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+                document.getElementById("elapsed-time").innerText = `${hours} שעות ו-${minutes} דקות`;
+                
+                document.getElementById("alert").style.display = (hours >= 4) ? "block" : "none";
+            }
+        }
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem("history")) || [];
+            const tableBody = document.getElementById("history-table");
+            tableBody.innerHTML = "";
+
+            history.forEach(entry => {
+                const row = document.createElement("tr");
+                row.innerHTML = `<td>${entry.type}</td><td>${new Date(entry.time).toLocaleString("he-IL")}</td>`;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function clearHistory() {
+            localStorage.removeItem("history");
+            loadHistory();
+        }
+    </script><!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>דף HTML בדוקר</title>
+</head>
+<body>
+    <h1>שלום, דוקר!</h1>
+    <p>זהו עמוד HTML שרץ בתוך קונטיינר.</p>
+</body>
+</html>
+</body>
+</html>
